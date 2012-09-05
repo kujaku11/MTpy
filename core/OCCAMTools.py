@@ -1148,7 +1148,7 @@ def make2DdataFile(edipath,mmode='both',savepath=None,stationlst=None,title=None
         
     datfid=open(datfilename,'w')
     datfid.write('FORMAT:'+' '*11+'OCCAM2MTDATA_1.0'+'\n')
-    datfid.write('TITLE:'+' '*12+'{0:.4g}--'.format(theta*180/np.pi)+' '+title+'\n')
+    datfid.write('TITLE:            %1.4f-- %s\n'%(theta*180/np.pi,title))
     
     #write station sites
     datfid.write('SITES:'+' '*12+str(nstat)+'\n')
@@ -1184,8 +1184,8 @@ def make2DdataFile(edipath,mmode='both',savepath=None,stationlst=None,title=None
     return datfilename
     
 def makeModel(datafilename,niter=20,targetrms=1.0,nlayers=100,nlperdec=30,
-              z1layer=50,bwidth=200,trigger=.75,savepath=None,rhostart=100,
-              occampath=r"c:\Peacock\PHD\OCCAM\MakeFiles"):
+              z1layer=50,bwidth=200,trigger=.75,cwd='.',rhostart=100,
+              makemodelexe=""):
     """
     makeModel will make an the input files for occam using Steve Constable's
     MakeModel2DMT.f code.
@@ -1199,9 +1199,10 @@ def makeModel(datafilename,niter=20,targetrms=1.0,nlayers=100,nlperdec=30,
         z1layer = thickness of the first layer in meters
         bwidth = maximum block width for regularization grid in meters
         trigger = triger point to amalgamate blocks
-        savepath = path to save files to
+        cwd     = working directory, files are saved here
         rhostart = starting resistivity for homogeneous half space in ohm-m
-        occampath = path to MakeModel2DMT.exe
+        makemodelexe = executable Make2DModel file
+        
         
     Outputs:
         meshfn = mesh file for finite element grid saved ats MESH
@@ -1210,14 +1211,19 @@ def makeModel(datafilename,niter=20,targetrms=1.0,nlayers=100,nlperdec=30,
         startupfn = start up filepath, saved as startup
     """
     #get the base name of data file    
+    
+    olddir = os.path.abspath(os.curdir)
+    os.chdir(cwd)
+
     dfnb=os.path.basename(datafilename)
     
+    #deprecated....not necessary, if path is given in excplicit form
     #put data file into the same directory as MakeModel2DMT
-    if os.path.dirname(datafilename)!=occampath:
-        shutil.copy(datafilename,os.path.join(occampath,dfnb))
+    #if os.path.dirname(datafilename)!=occampath:
+    #    shutil.copy(datafilename,os.path.join(occampath,dfnb))
     
     #write input file for MakeModel2DMT
-    mmfid=open(os.path.join(occampath,'inputMakeModel.txt'),'w')
+    mmfid=open(os.path.join(cwd,'inputMakeModel.txt'),'w')
     mmfid.write(dfnb+'\n')
     mmfid.write(str(niter)+'\n')    
     mmfid.write(str(targetrms)+'\n')    
@@ -1232,43 +1238,43 @@ def makeModel(datafilename,niter=20,targetrms=1.0,nlayers=100,nlperdec=30,
     shutil.copy(os.path.join(occampath,'inputMakeModel.txt'),
                 os.path.join(os.path.dirname(datafilename),
                              'inputMakeModel.txt'))
-    #get current working directory
-    cdir=os.getcwd() 
     
     #change directory path to occam path
     os.chdir(occampath) 
     
     #---call MakeModel2DMT---
-    subprocess.os.system("MakeModel2DMT < inputMakeModel.txt")
+    subprocess.os.system("%s < inputMakeModel.txt"%(makemodelexe))
     
     #change back to original working directory    
     os.chdir(cdir)
     
-    if savepath==None:
-        savepath=os.path.dirname(datafilename)
+    #deprecated....path given as input....has to be checked for externally
+    #if savepath==None:
+    #    savepath=os.path.dirname(datafilename)
     
-    if not os.path.exists(savepath):
-        os.mkdir(savepath)
+    #if not os.path.exists(savepath):
+    #    os.mkdir(savepath)
     
-    meshfn=os.path.join(savepath,'MESH')    
-    inmodelfn=os.path.join(savepath,'INMODEL')    
-    startupfn=os.path.join(savepath,'startup')    
+    meshfn=os.path.join(cwd,'MESH')    
+    inmodelfn=os.path.join(cwd,'INMODEL')
+    startupfn=os.path.join(cwd,'startup')
     
+    #deprecated....not necessary
     #copy ouput files to savepath
-    shutil.copy(os.path.join(occampath,'MESH'),meshfn)
-    shutil.copy(os.path.join(occampath,'INMODEL'),inmodelfn)
-    shutil.copy(os.path.join(occampath,'startup'),startupfn)
-    if not os.path.exists(os.path.join(savepath,dfnb)):
-        shutil.copy(datafilename,os.path.join(savepath,dfnb))
-    if os.path.getctime(os.path.join(savepath,dfnb))<\
-        os.path.getctime(datafilename):
-        shutil.copy(datafilename,os.path.join(savepath,dfnb))
+    #shutil.copy(os.path.join(occampath,'MESH'),meshfn)
+    #shutil.copy(os.path.join(occampath,'INMODEL'),inmodelfn)
+    #shutil.copy(os.path.join(occampath,'startup'),startupfn)
+    #if not os.path.exists(os.path.join(savepath,dfnb)):
+        #shutil.copy(datafilename,os.path.join(savepath,dfnb))
+    #if os.path.getctime(os.path.join(savepath,dfnb))<\
+        #os.path.getctime(datafilename):
+        #shutil.copy(datafilename,os.path.join(savepath,dfnb))
     
     #rewrite mesh so it contains the right number of columns and rows
     rewriteMesh(meshfn)
     
     #write startup file to have the starting desired starting rho value
-    ifid=open(startupfn,'r')
+    ifid=file(startupfn,'r')
     ilines=ifid.readlines()
     ifid.close()
     
@@ -1284,6 +1290,9 @@ def makeModel(datafilename,niter=20,targetrms=1.0,nlayers=100,nlperdec=30,
     
     print 'Be sure to check the INMODEL file for clumped numbers near the bottom.'
     print 'Also, check the MESH and startup files to make sure they are correct.'
+
+    #go back to old path:
+    os.chdir(olddir)
     
     return meshfn,inmodelfn,startupfn
 

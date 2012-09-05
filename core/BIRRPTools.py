@@ -17,7 +17,10 @@ import MTtools as mt
 import shutil
 import MTPlotTools as mtplot
 import subprocess
-import winsound as ws
+try:
+    import winsound as ws
+except ImportError:
+    ws = None
 
 #short spaces 3 spaces
 tsp='   '
@@ -25,14 +28,15 @@ tsp='   '
 lsp='      '
 
 def finishBeep():
-    ws.Beep(1000,80)
-    ws.Beep(300,150)
+    if ws:
+        ws.Beep(1000,80)
+        ws.Beep(300,150)
 #    ws.Beep(150,40)
 #    ws.Beep(200,40)
 #    ws.Beep(300,80)
 #    ws.Beep(1000,100)
-    for ii in np.arange(50,1200,100):
-        ws.Beep(ii,25)
+        for ii in np.arange(50,1200,100):
+            ws.Beep(ii,25)
 #    ws.Beep(523,50)
 #    ws.Beep(100,25)
 #    ws.Beep(264,50)
